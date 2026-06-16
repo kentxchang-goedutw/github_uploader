@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿剛老師的Github一鍵佈署工具</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src https://api.github.com; img-src 'self' data: https:;">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#7C6AFF;--primary-light:#A99BFF;--primary-dark:#5B4BD6;
+  --accent:#00C9E0;--accent2:#FF6B9D;
+  --success:#2ECC71;--warning:#F39C12;--error:#E74C3C;
+  --bg:#F0F2F8;--bg2:#FFFFFF;--bg3:#F8F9FC;
+  --text:#2D3748;--text-dim:#718096;--text-bright:#1A202C;
+  --border:#E2E8F0;--border-focus:rgba(124,106,255,.5);
+  --shadow:0 4px 24px rgba(0,0,0,.06);
+  --shadow-lg:0 12px 48px rgba(0,0,0,.1);
+  --radius:16px;--radius-sm:10px;
+}
+body{
+  font-family:'Segoe UI','SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;
+  background-image:
+    radial-gradient(ellipse at 20% 50%,rgba(124,106,255,.06) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 20%,rgba(0,201,224,.05) 0%,transparent 50%),
+    radial-gradient(ellipse at 50% 80%,rgba(255,107,157,.04) 0%,transparent 50%);
+}
+.app-wrap{max-width:1200px;margin:0 auto;padding:16px}
+
+/* Header */
+.header{
+  text-align:center;padding:32px 0 24px;position:relative;
+  background:linear-gradient(135deg,#7C6AFF 0%,#00C9E0 50%,#FF6B9D 100%);
+  border-radius:var(--radius);margin-bottom:24px;color:#fff;
+  box-shadow:0 8px 32px rgba(124,106,255,.25);
+}
+.header::before{
+  content:'';position:absolute;inset:0;border-radius:var(--radius);
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.logo{font-size:40px;margin-bottom:4px;display:block;position:relative}
+.header h1{
+  font-size:26px;font-weight:700;margin-bottom:4px;position:relative;
+  text-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.header p{font-size:13px;opacity:.85;position:relative}
+
+/* Two Column Layout */
+.main-grid{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
+
+/* Cards */
+.card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;margin-bottom:20px;
+  box-shadow:var(--shadow);transition:box-shadow .3s,border-color .3s;
+}
+.card:hover{box-shadow:var(--shadow-lg)}
+.card-title{
+  font-size:15px;font-weight:700;color:var(--text-bright);
+  margin-bottom:16px;display:flex;align-items:center;gap:10px;
+}
+.card-title .icon{font-size:18px}
+
+/* Upload Zone */
+.upload-zone{
+  border:2px dashed #C3CEEA;border-radius:var(--radius);
+  padding:40px 20px;text-align:center;cursor:pointer;
+  transition:all .3s;background:var(--bg3);
+}
+.upload-zone:hover,.upload-zone.drag-over{
+  border-color:var(--primary);background:rgba(124,106,255,.04);
+}
+.upload-zone.drag-over{transform:scale(1.01);box-shadow:0 0 0 4px rgba(124,106,255,.1)}
+.upload-icon{font-size:42px;margin-bottom:10px;display:block}
+.upload-text{font-size:14px;color:var(--text-dim)}
+.upload-text strong{color:var(--primary);cursor:pointer}
+.upload-hint{font-size:12px;color:var(--text-dim);margin-top:6px;opacity:.7}
+.upload-btns{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 18px;border-radius:var(--radius-sm);
+  font-size:13px;font-weight:600;cursor:pointer;
+  border:1px solid transparent;transition:all .2s;font-family:inherit;
+}
+.btn-outline{background:#fff;border-color:var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);background:rgba(124,106,255,.04)}
+.btn-primary{
+  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+  color:#fff;border:none;box-shadow:0 4px 16px rgba(124,106,255,.3);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(124,106,255,.4)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-success{background:linear-gradient(135deg,var(--success),#27AE60);color:#fff;border:none}
+.btn-success:hover{box-shadow:0 4px 16px rgba(46,204,113,.3)}
+.btn-danger{background:#fff;border-color:rgba(231,76,60,.3);color:var(--error)}
+.btn-danger:hover{background:rgba(231,76,60,.06);border-color:var(--error)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-xs{padding:4px 10px;font-size:11px;border-radius:6px}
+
+/* File Input Hidden */
+input[type="file"]{display:none}
+
+/* File Tree */
+.file-tree{
+  max-height:180px;overflow-y:auto;background:var(--bg3);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px;font-size:12px;font-family:'Cascadia Code','Fira Code',monospace;
+}
+.file-tree::-webkit-scrollbar{width:5px}
+.file-tree::-webkit-scrollbar-thumb{background:#CBD5E0;border-radius:3px}
+.file-item{padding:2px 0;color:var(--text-dim);display:flex;align-items:center;gap:5px}
+.file-item .fi-icon{flex-shrink:0}
+.file-item.dir{color:var(--accent);font-weight:600}
+.file-item.html{color:var(--primary)}
+.file-item.css{color:#3498DB}
+.file-item.js{color:#F1C40F}
+.file-item.py{color:#3498DB}
+.file-item.warn{color:var(--warning)}
+.file-stats{display:flex;gap:14px;margin-top:10px;font-size:12px;color:var(--text-dim);flex-wrap:wrap}
+.file-stats span{display:flex;align-items:center;gap:4px}
+
+/* Project Badge */
+.project-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-top:10px;
+}
+.project-badge.html{background:rgba(124,106,255,.1);color:var(--primary)}
+.project-badge.python{background:rgba(52,152,219,.1);color:#3498DB}
+.project-badge.mixed{background:rgba(243,156,18,.1);color:var(--warning)}
+
+/* Form */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-input{
+  width:100%;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text-bright);
+  font-size:14px;font-family:inherit;transition:all .2s;outline:none;
+}
+.form-input:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(124,106,255,.1)}
+.form-input::placeholder{color:#A0AEC0}
+.input-group{position:relative;flex:1}
+.input-group .form-input{width:100%;padding-right:42px}
+.input-toggle{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--text-dim);cursor:pointer;
+  font-size:16px;padding:4px;border-radius:6px;transition:color .2s;
+}
+.input-toggle:hover{color:var(--text-bright)}
+.form-hint{font-size:11px;color:var(--text-dim);margin-top:5px}
+.form-hint code{background:var(--bg);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--primary)}
+
+/* Repo Name */
+.repo-name-group{display:flex;align-items:center;gap:0}
+.repo-prefix{
+  padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-right:none;
+  border-radius:var(--radius-sm) 0 0 var(--radius-sm);font-size:12px;color:var(--text-dim);white-space:nowrap;
+}
+.repo-name-group .form-input{border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+
+/* Deploy Button */
+.deploy-area{padding:4px 0}
+.deploy-btn{width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:var(--radius);position:relative;overflow:hidden}
+.deploy-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);opacity:0;transition:opacity .3s;
+}
+.deploy-btn:hover::before{opacity:1}
+
+/* Progress */
+.progress-section{display:none}
+.progress-section.active{display:block}
+.progress-bar-bg{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:14px}
+.progress-bar{
+  height:100%;width:0;border-radius:3px;
+  background:linear-gradient(90deg,var(--primary),var(--accent),var(--accent2));
+  background-size:200% 100%;animation:gradientShift 2s ease infinite;
+  transition:width .4s ease;position:relative;
+}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.progress-bar::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:20px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.4));
+  animation:shimmer 1.5s infinite;
+}
+@keyframes shimmer{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+.progress-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.progress-stage{font-size:13px;color:var(--text-bright);font-weight:600}
+.progress-pct{font-size:12px;color:var(--primary);font-weight:700}
+
+/* Log */
+.log-box{
+  max-height:160px;overflow-y:auto;background:var(--bg3);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace;margin-top:10px;
+}
+.log-box::-webkit-scrollbar{width:4px}
+.log-box::-webkit-scrollbar-thumb{background:#CBD5E0;border-radius:2px}
+.log-line{padding:1px 0;white-space:pre-wrap;word-break:break-all}
+.log-line.info{color:var(--accent)}
+.log-line.success{color:var(--success)}
+.log-line.warn{color:var(--warning)}
+.log-line.error{color:var(--error)}
+
+/* Result */
+.result-section{display:none;padding:16px 0}
+.result-section.active{display:block}
+.result-icon{font-size:56px;margin-bottom:8px;display:block;animation:bounceIn .6s}
+@keyframes bounceIn{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+.result-title{font-size:20px;font-weight:700;color:var(--success);margin-bottom:6px;text-align:center}
+.result-url-row{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:8px 14px;margin:6px 0;font-size:12px;
+}
+.result-url-row .url-label{color:var(--text-dim);font-size:10px;white-space:nowrap;font-weight:600;text-transform:uppercase}
+.result-url-row .url-text{color:var(--primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:all;font-family:'Cascadia Code',monospace;font-size:12px}
+.result-actions{display:flex;gap:6px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.result-summary{margin-top:12px;font-size:12px;color:var(--text-dim);display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+
+/* Settings Modal */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);
+  backdrop-filter:blur(4px);z-index:1000;justify-content:center;align-items:center;
+  animation:fadeIn .2s;
+}
+.modal-overlay.active{display:flex}
+.modal{
+  background:var(--bg2);border-radius:var(--radius);padding:28px;
+  width:90%;max-width:560px;max-height:85vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;
+  animation:slideUp .3s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.modal-close{
+  position:absolute;right:16px;top:16px;background:var(--bg3);border:1px solid var(--border);
+  width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;color:var(--text-dim);transition:all .2s;
+}
+.modal-close:hover{background:var(--error);color:#fff;border-color:var(--error)}
+.modal-title{font-size:18px;font-weight:700;color:var(--text-bright);margin-bottom:20px;padding-right:40px}
+
+/* Guide Steps */
+.guide-steps{list-style:none;counter-reset:step}
+.guide-steps li{
+  counter-increment:step;display:flex;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--text-dim);line-height:1.7;
+}
+.guide-steps li:last-child{border-bottom:none}
+.guide-steps li::before{
+  content:counter(step);flex-shrink:0;width:26px;height:26px;
+  background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+}
+.guide-steps li strong{color:var(--text-bright)}
+.guide-steps code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;color:var(--primary);font-family:'Cascadia Code',monospace}
+.guide-steps .url-link{color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(0,201,224,.4)}
+.guide-steps .url-link:hover{border-bottom-color:var(--accent)}
+.guide-steps .warn-text{color:var(--warning);font-size:11px}
+
+/* Right Panel - History */
+.right-panel .card{margin-bottom:16px}
+.history-empty{text-align:center;padding:28px;color:var(--text-dim);font-size:13px}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-sm);transition:all .2s;
+}
+.history-item:hover{border-color:var(--primary);box-shadow:0 2px 12px rgba(124,106,255,.08)}
+.history-icon{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.history-icon.html{background:linear-gradient(135deg,rgba(124,106,255,.15),rgba(0,201,224,.1))}
+.history-icon.python{background:linear-gradient(135deg,rgba(52,152,219,.15),rgba(46,204,113,.1))}
+.history-icon.mixed{background:linear-gradient(135deg,rgba(243,156,18,.15),rgba(231,76,60,.1))}
+.history-info{flex:1;min-width:0}
+.history-name{font-size:13px;font-weight:700;color:var(--text-bright)}
+.history-meta{font-size:11px;color:var(--text-dim);margin-top:1px}
+.history-links{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+.history-actions{display:flex;gap:3px;flex-shrink:0}
+
+/* Spinner */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--radius-sm);
+  font-size:13px;font-weight:600;z-index:9999;animation:slideUp .3s ease;
+  box-shadow:0 8px 30px rgba(0,0,0,.15);
+}
+.toast.success{background:#27AE60;color:#fff}
+.toast.error{background:#C0392B;color:#fff}
+.toast.info{background:#2980B9;color:#fff}
+
+/* Footer */
+.footer{
+  text-align:center;padding:24px 0 12px;margin-top:12px;
+  border-top:1px solid var(--border);
+}
+.footer-author{font-size:13px;color:var(--text-dim);margin-bottom:4px}
+.footer-author a{color:var(--primary);text-decoration:none;font-weight:600}
+.footer-author a:hover{text-decoration:underline}
+.footer-license{font-size:11px;color:#A0AEC0;line-height:1.5}
+.footer-license a{color:var(--text-dim);text-decoration:none}
+.footer-license a:hover{text-decoration:underline}
+
+/* Responsive */
+@media(max-width:600px){
+  .app-wrap{padding:10px}
+  .card{padding:18px}
+  .header{padding:24px 16px}
+  .header h1{font-size:20px}
+  .upload-zone{padding:28px 14px}
+  .upload-icon{font-size:32px}
+  .repo-name-group{flex-direction:column}
+  .repo-prefix{border-right:1px solid var(--border);border-radius:var(--radius-sm);border-bottom:none}
+  .repo-name-group .form-input{border-radius:var(--radius-sm)}
+  .result-summary{flex-direction:column;gap:4px}
+  .file-stats{flex-direction:column;gap:3px}
+  .history-item{flex-direction:column;align-items:flex-start}
+  .history-links{justify-content:flex-start}
+}
+
+/* Animations */
+.fade-in{animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<div class="app-wrap">
+
+<!-- Header -->
+<div class="header fade-in">
+  <span class="logo">&#x1F680;</span>
+  <h1>阿剛老師的Github一鍵佈署工具</h1>
+  <p>上傳資料夾或 ZIP 檔，自動建立倉庫並部署為靜態網頁</p>
+</div>
+
+<!-- Two Column Layout -->
+<div class="main-grid">
+
+  <!-- Left Column: Upload + Deploy -->
+  <div class="left-panel">
+
+    <!-- Upload -->
+    <div class="card fade-in" id="card-upload">
+      <div class="card-title"><span class="icon">&#x1F4C1;</span> 選擇要部署的檔案</div>
+      <div class="upload-zone" id="uploadZone">
+        <span class="upload-icon">&#x2601;&#xFE0F;</span>
+        <div class="upload-text">拖拉資料夾或 ZIP 檔到此處，或<strong> 點擊選擇</strong></div>
+        <div class="upload-hint">支援 HTML/CSS/JS/Python 專案及 .zip 壓縮檔，單檔上限 25MB</div>
+        <div class="upload-btns">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('folderInput').click()">&#x1F4C2; 選擇資料夾</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('zipInput').click()">&#x1F4E6; 選擇 ZIP 檔</button>
+        </div>
+        <input type="file" id="folderInput" webkitdirectory directory multiple>
+        <input type="file" id="zipInput" accept=".zip">
+      </div>
+      <div id="filePreview" style="display:none;margin-top:14px">
+        <div id="indexSelector" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(243,156,18,.06);border:1px solid rgba(243,156,18,.2);border-radius:var(--radius-sm)">
+          <div style="font-size:12px;font-weight:600;color:var(--warning);margin-bottom:6px">&#x26A0; 未找到 index.html，請選擇首頁檔案：</div>
+          <select id="indexSelect" class="form-input" style="padding:8px 12px;font-size:13px" onchange="setIndexFromSelect()"></select>
+        </div>
+        <div class="file-tree" id="fileTree"></div>
+        <div class="file-stats" id="fileStats"></div>
+        <div id="projectBadge"></div>
+      </div>
+    </div>
+
+    <!-- Repo Name -->
+    <div class="card fade-in" id="card-repo">
+      <div class="card-title"><span class="icon">&#x1F4E6;</span> 倉庫名稱</div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="repo-name-group">
+          <span class="repo-prefix" id="repoPrefix">github.com/你的用戶名/</span>
+          <input type="text" class="form-input" id="repoInput" placeholder="my-website" spellcheck="false">
+        </div>
+        <div class="form-hint">只允許英數字、連字號(-)、底線(_)、點號(.)，建議用英文</div>
+      </div>
+    </div>
+
+    <!-- Deploy -->
+    <div class="card fade-in" id="card-deploy">
+      <div class="deploy-area">
+        <button class="btn btn-primary deploy-btn" id="deployBtn" disabled onclick="startDeploy()">
+          &#x1F680; 開始部署
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="card progress-section" id="card-progress">
+      <div class="card-title"><span class="icon">&#x1F4CA;</span> 部署進度</div>
+      <div class="progress-info">
+        <span class="progress-stage" id="progressStage">準備中...</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+    <!-- Result -->
+    <div class="card result-section" id="card-result">
+      <div id="resultSuccess" style="display:none">
+        <span class="result-icon">&#x1F389;</span>
+        <div class="result-title">部署成功！</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:10px;text-align:center" id="resultSubtitle"></p>
+        <div class="result-url-row">
+          <span class="url-label">&#x1F310; Pages</span>
+          <span class="url-text" id="resultPagesUrl"></span>
+          <button class="btn btn-xs btn-outline" onclick="copyText('resultPagesUrl')">&#x1F4CB;</button>
+          <button class="btn btn-xs btn-success" onclick="openUrl('resultPagesUrl')">&#x2197;</button>
+        </div>
+        <div class="result-url-row">
+          <span class="url-label">&#x1F4E6; Repo</span>
+          <span class="url-text" id="resultRepoUrl"></span>
+          <button class="btn btn-xs btn-outline" onclick="copyText('resultRepoUrl')">&#x1F4CB;</button>
+          <button class="btn btn-xs btn-success" onclick="openUrl('resultRepoUrl')">&#x2197;</button>
+        </div>
+        <div class="result-summary" id="resultSummary"></div>
+        <div class="result-actions">
+          <button class="btn btn-outline btn-sm" onclick="resetAll()">&#x1F504; 部署新網站</button>
+        </div>
+      </div>
+      <div id="resultPython" style="display:none">
+        <span class="result-icon">&#x1F40D;</span>
+        <div class="result-title">上傳成功！</div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:10px;text-align:center">Python 專案已上傳至 GitHub（GitHub Pages 僅支援靜態網站）</p>
+        <div class="result-url-row">
+          <span class="url-label">&#x1F4E6; Repo</span>
+          <span class="url-text" id="resultPythonRepoUrl"></span>
+          <button class="btn btn-xs btn-outline" onclick="copyText('resultPythonRepoUrl')">&#x1F4CB;</button>
+          <button class="btn btn-xs btn-success" onclick="openUrl('resultPythonRepoUrl')">&#x2197;</button>
+        </div>
+        <div class="result-summary" id="resultPythonSummary"></div>
+        <div class="result-actions">
+          <button class="btn btn-outline btn-sm" onclick="resetAll()">&#x1F504; 部署新網站</button>
+        </div>
+      </div>
+      <div id="resultError" style="display:none">
+        <span class="result-icon">&#x274C;</span>
+        <div class="result-title" style="color:var(--error)">部署失敗</div>
+        <p style="color:var(--text-dim);font-size:13px;text-align:center" id="errorMsg"></p>
+        <div class="result-actions" style="margin-top:16px">
+          <button class="btn btn-outline btn-sm" onclick="resetAll()">&#x1F504; 重新開始</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- Right Column: Tools + History -->
+  <div class="right-panel">
+
+    <!-- Tool Buttons -->
+    <div class="card fade-in">
+      <div class="card-title"><span class="icon">&#x2699;&#xFE0F;</span> 工具</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-outline" onclick="openSettings()" id="settingsBtn" style="width:100%;justify-content:flex-start">
+          &#x1F511; Token 設定(第一次需設定才可使用)
+        </button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="exportData()" style="flex:1">&#x1F4E5; 匯出資料</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('importInput').click()" style="flex:1">&#x1F4E4; 匯入資料</button>
+        </div>
+        <input type="file" id="importInput" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card fade-in" id="card-history">
+      <div class="card-title"><span class="icon">&#x1F4CB;</span> 已部署的網站</div>
+      <div id="historyContent"></div>
+    </div>
+  </div>
+
+</div><!-- /main-grid -->
+
+<!-- Footer -->
+<div class="footer fade-in">
+  <div class="footer-author">Made by <a href="https://kentxchang.blogspot.tw" target="_blank" rel="noopener noreferrer">阿剛老師</a></div>
+  <div class="footer-license">
+    本工具採用 <a href="https://creativecommons.org/licenses/by/4.0/deed.zh-hant" target="_blank" rel="noopener noreferrer">CC BY 4.0 授權條款</a><br>
+    姓名標示 4.0 國際 (CC BY 40) — 您可自由散布、修改及據此創作，但須標示原始作者。
+  </div>
+</div>
+
+</div><!-- /app-wrap -->
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSettings()">&#x2716;</button>
+    <div class="modal-title">&#x2699;&#xFE0F; GitHub Token 設定</div>
+
+    <div class="form-group">
+      <label class="form-label">Personal Access Token (PAT)</label>
+      <div class="input-group">
+        <input type="password" class="form-input" id="tokenInput"
+               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <button class="input-toggle" id="tokenToggle" title="顯示/隱藏">&#x1F441;</button>
+      </div>
+      <div class="form-hint">需要 <code>repo</code> 權限，有效期限建議 30 天。Token 保存在本地，下次自動填入。</div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div style="font-size:14px;font-weight:700;color:var(--text-bright);margin-bottom:12px">&#x1F4D6; 如何申請 GitHub Token？</div>
+      <ol class="guide-steps">
+        <li>
+          <div><strong>登入 GitHub</strong><br>
+          造訪 <a href="https://github.com" target="_blank" class="url-link">github.com</a> 並登入帳號。</div>
+        </li>
+        <li>
+          <div><strong>進入 Developer settings</strong><br>
+          頭像 → <strong>Settings</strong> → 左側最下方 <strong>Developer settings</strong><br>
+          或直接造訪 <a href="https://github.com/settings/tokens" target="_blank" class="url-link">github.com/settings/tokens</a></div>
+        </li>
+        <li>
+          <div><strong>建立新 Token</strong><br>
+          <strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong><br>
+          點擊 <strong>Generate new token</strong> → <strong>Generate new token (classic)</strong></div>
+        </li>
+        <li>
+          <div><strong>填寫設定</strong><br>
+          <strong>Note：</strong>例如 <code>GitHub Pages 部署工具</code><br>
+          <strong>Expiration：</strong>選擇 <strong>30 days</strong><br>
+          <strong>Scopes：</strong>只勾選 <strong>&#9745; repo</strong>，其他不要勾選</div>
+        </li>
+        <li>
+          <div><strong>複製 Token</strong><br>
+          點擊 <strong>Generate token</strong><br>
+          <span class="warn-text">&#9888;&#65039; Token 只顯示一次！格式為 <code>ghp_xxxxxxxxxxxx</code>，離開後無法再查看。</span></div>
+        </li>
+        <li>
+          <div><strong>貼上 Token</strong><br>
+          將 Token 貼入上方欄位，點擊「儲存」即可。下次開啟頁面會自動帶入。</div>
+        </li>
+      </ol>
+    </div>
+
+    <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary btn-sm" onclick="saveToken()">儲存 Token</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ============================================================
+// localStorage
+// ============================================================
+const STORAGE = {
+  PAT_KEY: 'gh_deployer_pat',
+  HISTORY_KEY: 'gh_deployer_history',
+  getPat() { return localStorage.getItem(this.PAT_KEY) || ''; },
+  setPat(pat) { localStorage.setItem(this.PAT_KEY, pat); },
+  getHistory() { try { return JSON.parse(localStorage.getItem(this.HISTORY_KEY)) || []; } catch { return []; } },
+  addHistory(record) {
+    const h = this.getHistory(); h.unshift(record);
+    if (h.length > 50) h.pop();
+    localStorage.setItem(this.HISTORY_KEY, JSON.stringify(h));
+  },
+  removeHistory(id) {
+    localStorage.setItem(this.HISTORY_KEY, JSON.stringify(this.getHistory().filter(h => h.id !== id)));
+  },
+  exportAll() {
+    return JSON.stringify({ pat: this.getPat(), history: this.getHistory(), exportDate: new Date().toISOString() }, null, 2);
+  },
+  importAll(jsonStr) {
+    const d = JSON.parse(jsonStr);
+    if (d.pat) this.setPat(d.pat);
+    if (d.history) localStorage.setItem(this.HISTORY_KEY, JSON.stringify(d.history));
+    return { patImported: !!d.pat, historyCount: d.history ? d.history.length : 0 };
+  }
+};
+
+// ============================================================
+// State
+// ============================================================
+const state = { files: [], token: '', owner: '', repo: '', startTime: 0, isPythonProject: false };
+
+// ============================================================
+// DOM
+// ============================================================
+const $ = id => document.getElementById(id);
+const el = {
+  folderInput: $('folderInput'), zipInput: $('zipInput'), uploadZone: $('uploadZone'),
+  filePreview: $('filePreview'), fileTree: $('fileTree'), fileStats: $('fileStats'), projectBadge: $('projectBadge'),
+  indexSelector: $('indexSelector'), indexSelect: $('indexSelect'),
+  tokenInput: $('tokenInput'), tokenToggle: $('tokenToggle'), repoInput: $('repoInput'), repoPrefix: $('repoPrefix'),
+  deployBtn: $('deployBtn'), cardProgress: $('card-progress'), progressBar: $('progressBar'),
+  progressStage: $('progressStage'), progressPct: $('progressPct'), logBox: $('logBox'),
+  cardResult: $('card-result'), resultSuccess: $('resultSuccess'), resultPython: $('resultPython'),
+  resultError: $('resultError'), resultPagesUrl: $('resultPagesUrl'), resultRepoUrl: $('resultRepoUrl'),
+  resultPythonRepoUrl: $('resultPythonRepoUrl'), resultSubtitle: $('resultSubtitle'),
+  resultSummary: $('resultSummary'), resultPythonSummary: $('resultPythonSummary'), errorMsg: $('errorMsg'),
+  cardHistory: $('card-history'), historyContent: $('historyContent'),
+  settingsModal: $('settingsModal'), importInput: $('importInput')
+};
+
+// ============================================================
+// UI Utils
+// ============================================================
+function log(msg, type = '') {
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = `[${new Date().toLocaleTimeString('zh-TW',{hour12:false})}] ${msg}`;
+  el.logBox.appendChild(line);
+  el.logBox.scrollTop = el.logBox.scrollHeight;
+}
+function setProgress(pct, stage) {
+  el.progressBar.style.width = pct + '%';
+  el.progressPct.textContent = Math.round(pct) + '%';
+  if (stage) el.progressStage.textContent = stage;
+}
+function toast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+
+// ============================================================
+// Settings Modal
+// ============================================================
+function openSettings() {
+  el.tokenInput.value = STORAGE.getPat();
+  el.settingsModal.classList.add('active');
+}
+function closeSettings() { el.settingsModal.classList.remove('active'); }
+function saveToken() {
+  const pat = el.tokenInput.value.trim();
+  STORAGE.setPat(pat);
+  closeSettings();
+  toast('Token 已儲存', 'success');
+  checkDeployReady();
+}
+let tokenVisible = false;
+el.tokenToggle.addEventListener('click', () => {
+  tokenVisible = !tokenVisible;
+  el.tokenInput.type = tokenVisible ? 'text' : 'password';
+  el.tokenToggle.textContent = tokenVisible ? '&#x1F440;' : '&#x1F441;';
+});
+el.settingsModal.addEventListener('click', (e) => { if (e.target === el.settingsModal) closeSettings(); });
+
+function updateRepoPrefix(owner) { el.repoPrefix.textContent = `github.com/${owner}/`; }
+
+// ============================================================
+// File Handling
+// ============================================================
+const SKIP_DIRS = ['.git','node_modules','.DS_Store','__MACOSX','__pycache__','.venv','venv','env'];
+const SKIP_EXTS = ['.DS_Store','.pyc','.pyo','.class'];
+const MAX_SIZE = 25 * 1024 * 1024;
+
+async function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result));
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function handleFileList(fileList) {
+  const files = [], skipped = [];
+  for (const file of fileList) {
+    const pathParts = file.webkitRelativePath ? file.webkitRelativePath.split('/') : file.name.split('/');
+    if (pathParts.some(p => SKIP_DIRS.includes(p))) continue;
+    if (SKIP_EXTS.some(ext => file.name.endsWith(ext))) continue;
+    if (file.size > MAX_SIZE) { skipped.push({ name: file.name, reason: `超過 25MB（${(file.size/1024/1024).toFixed(1)}MB）` }); continue; }
+    try {
+      const content = await readFileAsArrayBuffer(file);
+      let path = file.webkitRelativePath || file.name;
+      if (file.webkitRelativePath) { const parts = path.split('/'); if (parts.length > 1) path = parts.slice(1).join('/'); }
+      files.push({ path, content, size: file.size });
+    } catch { skipped.push({ name: file.name, reason: '讀取失敗' }); }
+  }
+  return { files, skipped };
+}
+
+async function handleZipFile(file) {
+  const zip = await JSZip.loadAsync(file);
+  const files = [], skipped = [];
+  const allPaths = Object.keys(zip.files).filter(p => !zip.files[p].dir);
+  let prefixToStrip = '';
+  if (allPaths.length > 0) {
+    const firstParts = allPaths.map(p => p.split('/')[0]);
+    const unique = [...new Set(firstParts)];
+    if (unique.length === 1 && allPaths[0].includes('/')) prefixToStrip = unique[0] + '/';
+  }
+  for (const [rawPath, zipEntry] of Object.entries(zip.files)) {
+    if (zipEntry.dir) continue;
+    let path = rawPath;
+    if (prefixToStrip && path.startsWith(prefixToStrip)) path = path.slice(prefixToStrip.length);
+    if (!path) continue;
+    const parts = path.split('/');
+    if (parts.some(p => SKIP_DIRS.includes(p))) continue;
+    if (SKIP_EXTS.some(ext => path.endsWith(ext))) continue;
+    const blob = await zipEntry.async('blob');
+    if (blob.size > MAX_SIZE) { skipped.push({ name: path.split('/').pop(), reason: `超過 25MB（${(blob.size/1024/1024).toFixed(1)}MB）` }); continue; }
+    const content = new Uint8Array(await blob.arrayBuffer());
+    files.push({ path, content, size: blob.size });
+  }
+  return { files, skipped };
+}
+
+function detectProjectType(files) {
+  const hasPy = files.some(f => f.path.endsWith('.py') || ['requirements.txt','setup.py','pyproject.toml'].includes(f.path));
+  const hasHtml = files.some(f => f.path.endsWith('.html'));
+  if (hasPy && !hasHtml) return 'python';
+  if (hasHtml && hasPy) return 'mixed';
+  if (hasHtml || files.some(f => f.path.endsWith('.css') || f.path.endsWith('.js'))) return 'html';
+  return 'other';
+}
+
+function renderFileTree(files, skipped) {
+  el.filePreview.style.display = '';
+  const totalSize = files.reduce((a, f) => a + f.size, 0);
+  state.isPythonProject = detectProjectType(files) === 'python';
+  let treeHtml = '';
+  const dirs = {}, rootFiles = [];
+  files.forEach(f => {
+    const parts = f.path.split('/');
+    if (parts.length === 1) rootFiles.push(f);
+    else { const d = parts[0]; if (!dirs[d]) dirs[d] = []; dirs[d].push({ ...f, subPath: parts.slice(1).join('/') }); }
+  });
+  Object.keys(dirs).sort().forEach(dir => {
+    treeHtml += `<div class="file-item dir"><span class="fi-icon">&#x1F4C1;</span> ${dir}/</div>`;
+    dirs[dir].sort((a,b) => a.subPath.localeCompare(b.subPath)).forEach(f => {
+      const ic = getFileIcon(f.subPath.split('/').pop());
+      treeHtml += `<div class="file-item ${ic.cls}" style="padding-left:18px"><span class="fi-icon">${ic.icon}</span> ${f.subPath}</div>`;
+    });
+  });
+  rootFiles.sort((a,b) => a.path.localeCompare(b.path)).forEach(f => {
+    const ic = getFileIcon(f.path);
+    treeHtml += `<div class="file-item ${ic.cls}"><span class="fi-icon">${ic.icon}</span> ${f.path}</div>`;
+  });
+  if (skipped.length > 0) {
+    treeHtml += `<div style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">`;
+    skipped.forEach(s => { treeHtml += `<div class="file-item warn"><span class="fi-icon">&#x26A0;</span> 已跳過 ${s.name}（${s.reason}）</div>`; });
+    treeHtml += `</div>`;
+  }
+  el.fileTree.innerHTML = treeHtml;
+  const hasIndex = files.some(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
+  const pt = detectProjectType(files);
+  // Show index selector for HTML projects without index.html
+  if (pt !== 'python' && !hasIndex) {
+    populateIndexSelector(files);
+  } else {
+    $('indexSelector').style.display = 'none';
+  }
+  el.fileStats.innerHTML = `
+    <span>&#x1F4C4; ${files.length} 個檔案</span>
+    <span>&#x1F4BE; ${formatSize(totalSize)}</span>
+    ${skipped.length > 0 ? `<span style="color:var(--warning)">&#x26A0; ${skipped.length} 個已跳過</span>` : ''}
+    ${pt === 'python' ? '<span style="color:#3498DB">&#x1F40D; Python 專案</span>' :
+      hasIndex ? '<span style="color:var(--success)">&#x2714; 包含 index.html</span>' :
+      '<span style="color:var(--warning)">&#x26A0; 未包含 index.html</span>'}`;
+  const badgeLabel = {html:'HTML 靜態網站',python:'Python 專案',mixed:'HTML + Python',other:'一般專案'}[pt]||'一般專案';
+  const badgeIcon = {html:'&#x1F310;',python:'&#x1F40D;',mixed:'&#x1F500;',other:'&#x1F4C4;'}[pt]||'&#x1F4C4;';
+  el.projectBadge.innerHTML = `<div class="project-badge ${pt}">${badgeIcon} ${badgeLabel}${pt==='python'?'（僅上傳，不啟用 Pages）':''}</div>`;
+  checkDeployReady();
+}
+
+// Index Selector for HTML projects without index.html
+function populateIndexSelector(files) {
+  const selector = $('indexSelect');
+  const selectorWrap = $('indexSelector');
+  const htmlFiles = files.filter(f => f.path.endsWith('.html')).sort((a,b) => {
+    // Prioritize common index-like names
+    const aName = a.path.split('/').pop().toLowerCase();
+    const bName = b.path.split('/').pop().toLowerCase();
+    const priority = ['index.html','main.html','home.html','default.html'];
+    const aPri = priority.indexOf(aName);
+    const bPri = priority.indexOf(bName);
+    if (aPri !== -1 && bPri !== -1) return aPri - bPri;
+    if (aPri !== -1) return -1;
+    if (bPri !== -1) return 1;
+    return a.path.localeCompare(b.path);
+  });
+  if (htmlFiles.length === 0) { selectorWrap.style.display = 'none'; return false; }
+  selectorWrap.style.display = '';
+  selector.innerHTML = htmlFiles.map(f => `<option value="${f.path}">${f.path}</option>`).join('');
+  return true;
+}
+
+function setIndexFromSelect() {
+  const selectedPath = $('indexSelect').value;
+  if (!selectedPath) return;
+  const sourceFile = state.files.find(f => f.path === selectedPath);
+  if (!sourceFile) return;
+  state.files = state.files.filter(f => f.path !== 'index.html' && !f.path.endsWith('/index.html'));
+  const contentCopy = new Uint8Array(sourceFile.content);
+  state.files.unshift({ path: 'index.html', content: contentCopy, size: sourceFile.size });
+  toast(`已將 ${selectedPath} 複製為 index.html`, 'success');
+  log(`已將 ${selectedPath} 複製為 index.html（共 ${state.files.length} 個檔案待上傳）`, 'success');
+  renderFileTree(state.files, []);
+}
+
+function renderFileStats() {
+  const totalSize = state.files.reduce((a, f) => a + f.size, 0);
+  const hasIndex = state.files.some(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
+  const pt = detectProjectType(state.files);
+  el.fileStats.innerHTML = `
+    <span>&#x1F4C4; ${state.files.length} 個檔案</span>
+    <span>&#x1F4BE; ${formatSize(totalSize)}</span>
+    ${pt === 'python' ? '<span style="color:#3498DB">&#x1F40D; Python 專案</span>' :
+      hasIndex ? '<span style="color:var(--success)">&#x2714; 包含 index.html</span>' :
+      '<span style="color:var(--warning)">&#x26A0; 未包含 index.html</span>'}`;
+}
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const m = {html:{icon:'&#x1F310;',cls:'html'},css:{icon:'&#x1F3A8;',cls:'css'},js:{icon:'&#x26A1;',cls:'js'},py:{icon:'&#x1F40D;',cls:'py'},json:{icon:'&#x1F4CB;',cls:''},md:{icon:'&#x1F4DD;',cls:''},txt:{icon:'&#x1F4CB;',cls:''},png:{icon:'&#x1F5BC;',cls:''},jpg:{icon:'&#x1F5BC;',cls:''},svg:{icon:'&#x1F3A8;',cls:'css'},gif:{icon:'&#x1F5BC;',cls:''}};
+  return m[ext] || {icon:'&#x1F4C4;',cls:''};
+}
+function formatSize(b) { return b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
+
+function checkDeployReady() {
+  const hasToken = STORAGE.getPat().length > 10;
+  const hasRepo = el.repoInput.value.trim().length > 0;
+  const hasFiles = state.files.length > 0;
+  el.deployBtn.disabled = !(hasToken && hasRepo && hasFiles);
+}
+el.repoInput.addEventListener('input', () => { el.repoInput.value = el.repoInput.value.replace(/[^a-zA-Z0-9._-]/g, ''); checkDeployReady(); });
+
+// ============================================================
+// Upload Events
+// ============================================================
+el.folderInput.addEventListener('change', async (e) => {
+  if (!e.target.files.length) return;
+  log('正在讀取資料夾...');
+  const { files, skipped } = await handleFileList(e.target.files);
+  state.files = files;
+  log(`讀取完成：${files.length} 個檔案`, 'success');
+  renderFileTree(files, skipped);
+});
+el.zipInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  log('正在解壓縮 ZIP...');
+  try {
+    const { files, skipped } = await handleZipFile(file);
+    state.files = files;
+    log(`解壓完成：${files.length} 個檔案`, 'success');
+    renderFileTree(files, skipped);
+  } catch (err) { log('ZIP 解壓失敗：' + err.message, 'error'); }
+});
+let dragCounter = 0;
+el.uploadZone.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; el.uploadZone.classList.add('drag-over'); });
+el.uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); });
+el.uploadZone.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter <= 0) { dragCounter = 0; el.uploadZone.classList.remove('drag-over'); } });
+el.uploadZone.addEventListener('drop', async (e) => {
+  e.preventDefault(); dragCounter = 0; el.uploadZone.classList.remove('drag-over');
+  const allFiles = [];
+  const items = e.dataTransfer && e.dataTransfer.items;
+  if (items && items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind !== 'file') continue;
+      let usedFsApi = false;
+      const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+      if (entry) {
+        try {
+          const ok = await readEntryRecursive(entry, '');
+          if (ok) usedFsApi = true;
+        } catch (err) { /* fall through to fallback */ }
+      }
+      if (!usedFsApi) {
+        const f = item.getAsFile();
+        if (f) allFiles.push(f);
+      }
+    }
+  } else if (e.dataTransfer && e.dataTransfer.files) {
+    for (let i = 0; i < e.dataTransfer.files.length; i++) allFiles.push(e.dataTransfer.files[i]);
+  }
+  if (allFiles.length > 0) {
+    log('正在讀取拖拉的檔案...');
+    const { files, skipped } = await handleFileList(allFiles);
+    state.files = files;
+    log(`讀取完成：${files.length} 個檔案`, 'success');
+    renderFileTree(files, skipped);
+  } else {
+    log('未偵測到可上傳的檔案，請確認拖入的是檔案或資料夾', 'warn');
+  }
+  function readEntryRecursive(entry, basePath) {
+    return new Promise((resolve) => {
+      if (entry.isFile) {
+        entry.file(f => { allFiles.push(f); resolve(true); }, () => resolve(false));
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const allEntries = [];
+        function readBatch() {
+          reader.readEntries(batch => {
+            if (batch.length === 0) {
+              const dn = basePath ? basePath + '/' + entry.name : entry.name;
+              let chain = Promise.resolve();
+              for (const e of allEntries) chain = chain.then(() => readEntryRecursive(e, dn));
+              chain.then(() => resolve(true));
+            } else {
+              for (let j = 0; j < batch.length; j++) allEntries.push(batch[j]);
+              readBatch();
+            }
+          }, () => resolve(false));
+        }
+        readBatch();
+      } else { resolve(false); }
+    });
+  }
+});
+
+// ============================================================
+// GitHub API
+// ============================================================
+class GitHubAPI {
+  constructor(token) { this.token = token; this.base = 'https://api.github.com'; }
+  async request(method, path, body = null, retries = 3) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const opts = { method, headers: { 'Authorization': `Bearer ${this.token}`, 'Accept': 'application/vnd.github.v3+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'GH-Pages-Deployer/2.0' } };
+        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+        const res = await fetch(this.base + path, opts);
+        const remaining = res.headers.get('X-RateLimit-Remaining');
+        if (remaining && parseInt(remaining) < 10) {
+          const reset = res.headers.get('X-RateLimit-Reset');
+          const wait = Math.max(0, (parseInt(reset)*1000)-Date.now())/1000;
+          log(`API 配額即將用盡，等待 ${Math.ceil(wait)} 秒...`, 'warn');
+          await sleep(Math.min(wait*1000, 30000)); continue;
+        }
+        if (res.status === 403 || res.status === 429) {
+          const wait = res.headers.get('Retry-After') ? parseInt(res.headers.get('Retry-After')) : Math.pow(2,attempt)*1000;
+          log(`API 限流，${Math.ceil(wait/1000)} 秒後重試...`, 'warn'); await sleep(wait); continue;
+        }
+        if (res.status === 204) return {};
+        const data = await res.json();
+        if (!res.ok) throw new Error(`GitHub API 錯誤 (${res.status}): ${data.message||res.statusText}`);
+        return data;
+      } catch (err) {
+        if (attempt === retries-1) throw err;
+        await sleep(Math.pow(2,attempt)*1000);
+        log(`請求失敗，重試中: ${err.message}`, 'warn');
+      }
+    }
+  }
+  async getUser() { return (await this.request('GET','/user')).login; }
+  async checkRepoExists(o, r) { try { await this.request('GET',`/repos/${o}/${r}`); return true; } catch(e) { return e.message.includes('404') ? false : (()=>{throw e})(); } }
+  async createRepo(o, r) { return this.request('POST','/user/repos',{name:r,private:false,auto_init:false,description:'Deployed via GitHub Pages Deployer'}); }
+  async getRepoContents(o, r, path) {
+    const encoded = path ? encodeURIComponent(path) : '';
+    return this.request('GET',`/repos/${o}/${r}/contents/${encoded}?ref=main`);
+  }
+  async getAllFiles(o, r) {
+    const shaMap = {};
+    const queue = [''];
+    while (queue.length > 0) {
+      const dir = queue.shift();
+      try {
+        const items = await this.getRepoContents(o, r, dir);
+        if (!Array.isArray(items)) continue;
+        for (const item of items) {
+          if (item.type === 'file') { shaMap[item.path] = item.sha; }
+          else if (item.type === 'dir') { queue.push(item.path); }
+        }
+      } catch { /* skip empty or inaccessible dirs */ }
+    }
+    return shaMap;
+  }
+  async uploadFile(o, r, path, content, msg, sha) {
+    const body = {message:msg,content:uint8ToBase64(content),branch:'main'};
+    if (sha) body.sha = sha;
+    return this.request('PUT',`/repos/${o}/${r}/contents/${encodeURIComponent(path)}`,body);
+  }
+  async enablePages(o, r) { return this.request('POST',`/repos/${o}/${r}/pages`,{source:{branch:'main',path:'/'}}); }
+  async getPagesStatus(o, r) { try { return await this.request('GET',`/repos/${o}/${r}/pages`); } catch { return null; } }
+}
+function uint8ToBase64(u) { let b=''; for(let i=0;i<u.length;i++) b+=String.fromCharCode(u[i]); return btoa(b); }
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ============================================================
+// History
+// ============================================================
+function renderHistory() {
+  const history = STORAGE.getHistory();
+  if (history.length === 0) { el.historyContent.innerHTML = '<div class="history-empty">&#x1F4CB;<br>尚未部署任何專案<br><span style="font-size:12px;margin-top:4px;display:block">部署後的網站會出現在這裡</span></div>'; return; }
+  let html = '<div class="history-list">';
+  history.forEach(h => {
+    const date = new Date(h.timestamp).toLocaleDateString('zh-TW');
+    const icon = {html:'&#x1F310;',python:'&#x1F40D;',mixed:'&#x1F500;',other:'&#x1F4C4;'}[h.projectType]||'&#x1F4C4;';
+    html += `<div class="history-item">
+      <div class="history-icon ${h.projectType||'html'}">${icon}</div>
+      <div class="history-info">
+        <div class="history-name">${h.repo}</div>
+        <div class="history-meta">${h.owner} · ${date} · ${h.fileCount} 檔</div>
+      </div>
+      <div class="history-links">
+        ${h.pagesUrl?`<button class="btn btn-xs btn-success" onclick="window.open('${h.pagesUrl}','_blank')">&#x1F310;</button>`:''}
+        <button class="btn btn-xs btn-outline" onclick="window.open('${h.githubUrl}','_blank')">&#x1F4E6;</button>
+      </div>
+      <div class="history-actions">
+        <button class="btn btn-xs btn-danger" onclick="deleteHistory(${h.id})" title="刪除">&#x2716;</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  el.historyContent.innerHTML = html;
+}
+function deleteHistory(id) { STORAGE.removeHistory(id); renderHistory(); toast('已刪除','info'); }
+
+// ============================================================
+// Deploy
+// ============================================================
+async function startDeploy() {
+  state.token = STORAGE.getPat();
+  state.repo = el.repoInput.value.trim();
+  state.startTime = Date.now();
+  el.deployBtn.disabled = true;
+  el.deployBtn.innerHTML = '<span class="spinner"></span> 部署中...';
+  el.cardProgress.classList.add('active');
+  el.cardProgress.style.display = '';
+  el.logBox.innerHTML = '';
+  setProgress(0, '準備中...');
+  const api = new GitHubAPI(state.token);
+  try {
+    log('正在驗證 Token...','info'); setProgress(5,'驗證 Token...');
+    state.owner = await api.getUser();
+    updateRepoPrefix(state.owner);
+    log(`Token 驗證成功，用戶：${state.owner}`,'success');
+
+    log(`檢查倉庫 ${state.repo}...`,'info'); setProgress(10,'檢查倉庫...');
+    const repoExists = await api.checkRepoExists(state.owner, state.repo);
+    let shaMap = {};
+    if (repoExists) {
+      log('倉庫已存在，正在讀取舊檔案...','warn'); setProgress(12,'讀取舊檔案...');
+      shaMap = await api.getAllFiles(state.owner, state.repo);
+      const shaCount = Object.keys(shaMap).length;
+      log(`已讀取 ${shaCount} 個舊檔案，將自動覆蓋更新`,'info');
+    } else {
+      log('正在建立新倉庫...','info'); setProgress(15,'建立倉庫...');
+      await api.createRepo(state.owner, state.repo);
+      log(`倉庫 ${state.repo} 建立成功`,'success');
+    }
+
+    log(`開始上傳 ${state.files.length} 個檔案...`,'info');
+    let uploaded = 0, skipped = 0;
+    for (const file of state.files) {
+      setProgress(20+(uploaded/state.files.length)*60, `上傳 (${uploaded+1}/${state.files.length})`);
+      const existingSha = shaMap[file.path] || null;
+      const action = existingSha ? '更新' : '新增';
+      try { await api.uploadFile(state.owner, state.repo, file.path, file.content, `${action} ${file.path}`, existingSha); uploaded++; log(`已上傳 ${uploaded}/${state.files.length}：[${action}] ${file.path}`,'success'); }
+      catch (err) { skipped++; log(`跳過 ${file.path}：${err.message}`,'warn'); }
+    }
+    log(`上傳完成：成功 ${uploaded}，跳過 ${skipped}`,'success');
+
+    const elapsed = ((Date.now()-state.startTime)/1000).toFixed(1);
+    const githubUrl = `https://github.com/${state.owner}/${state.repo}`;
+    const pt = detectProjectType(state.files);
+
+    if (pt === 'python') {
+      setProgress(100,'上傳完成！'); log('Python 專案已上傳完成','success');
+      el.resultPythonRepoUrl.textContent = githubUrl;
+      el.resultPythonSummary.innerHTML = `<span>&#x1F4C4; ${state.files.length} 檔</span><span>&#x23F1; ${elapsed} 秒</span>`;
+      el.resultSuccess.style.display='none'; el.resultPython.style.display=''; el.resultError.style.display='none';
+      el.cardResult.classList.add('active'); el.cardResult.style.display='';
+      STORAGE.addHistory({id:Date.now(),owner:state.owner,repo:state.repo,githubUrl,pagesUrl:'',projectType:pt,timestamp:new Date().toISOString(),fileCount:state.files.length});
+      renderHistory();
+    } else {
+      log('正在啟用 GitHub Pages...','info'); setProgress(85,'啟用 Pages...');
+      try { await api.enablePages(state.owner, state.repo); log('Pages 已啟用','success'); }
+      catch (err) { if (err.message.includes('422')) log('Pages 可能已啟用','warn'); else throw err; }
+
+      log('等待 Pages 建置...','info'); setProgress(90,'等待建置...');
+      let ready=false, attempts=0;
+      while (!ready && attempts<30) {
+        await sleep(3000);
+        const s = await api.getPagesStatus(state.owner, state.repo);
+        if (s && (s.status==='built'||s.status==='online')) { ready=true; log('Pages 建置完成！','success'); }
+        else { attempts++; setProgress(90+(attempts/30)*8,`等待中 (${attempts}/30)`); if(attempts%5===0) log(`等待建置... (${attempts}/30)`,'info'); }
+      }
+      if (!ready) log('建置仍在進行中','warn');
+
+      const pagesUrl = `https://${state.owner}.github.io/${state.repo}/`;
+      setProgress(100,'部署完成！'); log('部署完成！','success');
+      el.resultPagesUrl.textContent = pagesUrl; el.resultRepoUrl.textContent = githubUrl;
+      el.resultSubtitle.textContent = '你的靜態網站已上線';
+      el.resultSummary.innerHTML = `<span>&#x1F4C4; ${state.files.length} 檔</span><span>&#x23F1; ${elapsed} 秒</span>`;
+      el.resultSuccess.style.display=''; el.resultPython.style.display='none'; el.resultError.style.display='none';
+      el.cardResult.classList.add('active'); el.cardResult.style.display='';
+      STORAGE.addHistory({id:Date.now(),owner:state.owner,repo:state.repo,githubUrl,pagesUrl,projectType:pt,timestamp:new Date().toISOString(),fileCount:state.files.length});
+      renderHistory();
+    }
+  } catch (err) {
+    log('部署失敗：'+err.message,'error');
+    el.errorMsg.textContent = err.message;
+    el.resultSuccess.style.display='none'; el.resultPython.style.display='none'; el.resultError.style.display='';
+    el.cardResult.classList.add('active'); el.cardResult.style.display='';
+    el.deployBtn.disabled=false; el.deployBtn.innerHTML='&#x1F680; 重新部署';
+  }
+}
+
+// ============================================================
+// Utils
+// ============================================================
+function copyText(id) { navigator.clipboard.writeText($(id).textContent).then(()=>toast('已複製','success')); }
+function openUrl(id) { window.open($(id).textContent,'_blank'); }
+function resetAll() {
+  state.files=[]; state.token=''; state.owner=''; state.repo=''; state.isPythonProject=false;
+  el.filePreview.style.display='none'; el.repoInput.value='';
+  el.indexSelector.style.display='none';
+  el.deployBtn.disabled=true; el.deployBtn.innerHTML='&#x1F680; 開始部署';
+  el.cardProgress.classList.remove('active'); el.cardProgress.style.display='none';
+  el.cardResult.classList.remove('active'); el.cardResult.style.display='none';
+  el.resultSuccess.style.display='none'; el.resultPython.style.display='none'; el.resultError.style.display='none';
+  el.folderInput.value=''; el.zipInput.value=''; el.projectBadge.innerHTML='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function exportData() {
+  const blob = new Blob([STORAGE.exportAll()],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`github-deployer-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href); toast('資料已匯出','success');
+}
+el.importInput.addEventListener('change', async (e) => {
+  const file=e.target.files[0]; if(!file) return;
+  try { const r=STORAGE.importAll(await file.text()); toast(`匯入完成：${r.historyCount} 筆記錄`,'success'); renderHistory(); checkDeployReady(); }
+  catch { toast('匯入失敗：檔案格式不正確','error'); }
+  e.target.value='';
+});
+
+// ============================================================
+// Init
+// ============================================================
+(function init() {
+  renderHistory(); updateRepoPrefix('你的用戶名'); checkDeployReady();
+})();
+</script>
+</body>
+</html>
